@@ -17,6 +17,16 @@ import android.widget.Toast;
 
 public class CarModeActivity extends Activity {
 	private static final String dock_state = "dockstate";
+	
+	public void Message(final String msg) {
+		runOnUiThread(new Runnable() 
+		{
+			public void run() 
+			{
+				Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+			}
+		});
+	}
 
 	public void RunAsRoot(String cmd, int mode) {
 		boolean success = false;
@@ -29,7 +39,7 @@ public class CarModeActivity extends Activity {
 			os.flush();
 
 			if (p.waitFor() != 255) {
-				Toast.makeText(null, "Go to " + ((mode == Intent.EXTRA_DOCK_STATE_CAR) ? "car" : "normal") + " mode", Toast.LENGTH_SHORT).show();
+				Message("Go to " + ((mode == Intent.EXTRA_DOCK_STATE_CAR) ? "car" : "normal") + " mode");
 				success = true;
 			}
 		} catch (IOException e) {
@@ -39,7 +49,7 @@ public class CarModeActivity extends Activity {
 		}
 
 		if (!success)
-			Toast.makeText(null, "Failed to get root access", Toast.LENGTH_SHORT).show();
+			Message("Failed to get root access");
 	}
 
 	private class SwitchState extends AsyncTask<String, Void, Void> {
@@ -58,11 +68,11 @@ public class CarModeActivity extends Activity {
 				else if (dockState == Intent.EXTRA_DOCK_STATE_CAR)
 					RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_UNDOCKED);
 				else
-					Toast.makeText(null, "Wrong dock mode", Toast.LENGTH_SHORT).show();
+					Message("Wrong dock mode");
 			}
 			catch (Exception e) {
 				e.printStackTrace();
-				Toast.makeText(null, "Unknown error occured", Toast.LENGTH_SHORT).show();
+				Message("Unknown error occured");
 			}
 
 			return null;
@@ -84,7 +94,7 @@ public class CarModeActivity extends Activity {
 
 				file.setExecutable(true);
 			} catch (IOException e) {
-				Toast.makeText(null, "Error storing binary", Toast.LENGTH_SHORT).show();
+				Toast.makeText(this, "Error storing binary", Toast.LENGTH_SHORT).show();
 				return null;
 			}
 		}
