@@ -6,6 +6,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.app.Activity;
 import android.content.Context;
@@ -22,13 +23,13 @@ public class CarModeActivity extends Activity {
 
 		try {
 			Process p = Runtime.getRuntime().exec("su");
-			DataOutputStream os = new DataOutputStream(p.getOutputStream());            
+			DataOutputStream os = new DataOutputStream(p.getOutputStream());		
 			os.writeBytes(cmd + " " + mode + "\n");
-			os.writeBytes("exit\n");  
+			os.writeBytes("exit\n");	
 			os.flush();
 
 			if (p.waitFor() != 255) {
-				Toast.makeText(this, "Go to " + ((mode == Intent.EXTRA_DOCK_STATE_CAR) ? "car" : "normal") + " mode", Toast.LENGTH_SHORT).show();
+				Toast.makeText(null, "Go to " + ((mode == Intent.EXTRA_DOCK_STATE_CAR) ? "car" : "normal") + " mode", Toast.LENGTH_SHORT).show();
 				success = true;
 			}
 		} catch (IOException e) {
@@ -38,7 +39,34 @@ public class CarModeActivity extends Activity {
 		}
 
 		if (!success)
-			Toast.makeText(this, "Failed to get root access", Toast.LENGTH_SHORT).show();
+			Toast.makeText(null, "Failed to get root access", Toast.LENGTH_SHORT).show();
+	}
+
+	private class SwitchState extends AsyncTask<String, Void, Void> {
+		@Override
+		protected Void doInBackground(String... param) {
+			try {
+				String cmd = param[0];
+				IntentFilter ifilter = new IntentFilter(Intent.ACTION_DOCK_EVENT);
+				Intent dockStatus = registerReceiver(null, ifilter);
+				int dockState = (dockStatus == null ?
+					Intent.EXTRA_DOCK_STATE_UNDOCKED :
+					dockStatus.getIntExtra(Intent.EXTRA_DOCK_STATE, -1));
+
+				if (dockState == Intent.EXTRA_DOCK_STATE_UNDOCKED)
+					RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_CAR);
+				else if (dockState == Intent.EXTRA_DOCK_STATE_CAR)
+					RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_UNDOCKED);
+				else
+					Toast.makeText(null, "Wrong dock mode", Toast.LENGTH_SHORT).show();
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+				Toast.makeText(null, "Unknown error occured", Toast.LENGTH_SHORT).show();
+			}
+
+			return null;
+		}
 	}
 
 	private String getDockPath() {
@@ -56,35 +84,22 @@ public class CarModeActivity extends Activity {
 
 				file.setExecutable(true);
 			} catch (IOException e) {
-				e.printStackTrace();
+				Toast.makeText(null, "Error storing binary", Toast.LENGTH_SHORT).show();
+				return null;
 			}
 		}
-		return file.getAbsolutePath(); 
+		return file.getAbsolutePath();
 	}
-
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_car_mode);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
-		try {
-			String cmd = getDockPath();
-	
-			IntentFilter ifilter = new IntentFilter(Intent.ACTION_DOCK_EVENT);
-			Intent dockStatus = registerReceiver(null, ifilter);
-			int dockState = dockStatus.getIntExtra(Intent.EXTRA_DOCK_STATE, -1);
-	
-			if (dockState == Intent.EXTRA_DOCK_STATE_UNDOCKED)
-				RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_CAR);
-			else if (dockState == Intent.EXTRA_DOCK_STATE_CAR)
-				RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_UNDOCKED);
-			else
-				Toast.makeText(this, "Wrong dock mode", Toast.LENGTH_SHORT).show();
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
+		String cmd = getDockPath();
+		if (cmd != null)
+			new SwitchState().execute(cmd);
 
 		finish();
 	}
