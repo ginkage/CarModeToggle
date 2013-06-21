@@ -18,18 +18,29 @@ public class CarModeActivity extends Activity {
 	private static final String dock_state = "dockstate";
 
 	public void RunAsRoot(String cmd, int mode) {
+		boolean success = false;
+
 		try {
 			Process p = Runtime.getRuntime().exec("su");
 			DataOutputStream os = new DataOutputStream(p.getOutputStream());            
 			os.writeBytes(cmd + " " + mode + "\n");
 			os.writeBytes("exit\n");  
 			os.flush();
-			Toast.makeText(this, "Go to " + ((mode == Intent.EXTRA_DOCK_STATE_CAR) ? "car" : "normal") + " mode", Toast.LENGTH_SHORT).show();
+
+			if (p.waitFor() != 255) {
+				Toast.makeText(this, "Go to " + ((mode == Intent.EXTRA_DOCK_STATE_CAR) ? "car" : "normal") + " mode", Toast.LENGTH_SHORT).show();
+				success = true;
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
+
+		if (!success)
+			Toast.makeText(this, "Failed to get root access", Toast.LENGTH_SHORT).show();
 	}
-	
+
 	private String getDockPath() {
 		File file = getFileStreamPath(dock_state);
 		if (!file.exists()) {
