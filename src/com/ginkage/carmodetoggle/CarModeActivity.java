@@ -57,16 +57,25 @@ public class CarModeActivity extends Activity {
 		protected Void doInBackground(String... param) {
 			try {
 				String cmd = param[0];
+				String action = param[1];
 				IntentFilter ifilter = new IntentFilter(Intent.ACTION_DOCK_EVENT);
 				Intent dockStatus = registerReceiver(null, ifilter);
 				int dockState = (dockStatus == null ?
 					Intent.EXTRA_DOCK_STATE_UNDOCKED :
 					dockStatus.getIntExtra(Intent.EXTRA_DOCK_STATE, -1));
-
-				if (dockState == Intent.EXTRA_DOCK_STATE_UNDOCKED)
-					RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_CAR);
-				else if (dockState == Intent.EXTRA_DOCK_STATE_CAR)
-					RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_UNDOCKED);
+				
+				if (dockState == Intent.EXTRA_DOCK_STATE_UNDOCKED) {
+					if (action.equals("android.intent.action.MAIN") || action.equals("com.ginkage.carmodetoggle.ENABLE"))
+						RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_CAR);
+					else
+						Message("Already in normal mode");
+				}
+				else if (dockState == Intent.EXTRA_DOCK_STATE_CAR) {
+					if (action.equals("android.intent.action.MAIN") || action.equals("com.ginkage.carmodetoggle.DISABLE"))
+						RunAsRoot(cmd, Intent.EXTRA_DOCK_STATE_UNDOCKED);
+					else
+						Message("Already in car mode");
+				}
 				else
 					Message("Wrong dock mode");
 			}
@@ -107,9 +116,10 @@ public class CarModeActivity extends Activity {
 		setContentView(R.layout.activity_car_mode);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
+		String action = getIntent().getAction();
 		String cmd = getDockPath();
 		if (cmd != null)
-			new SwitchState().execute(cmd);
+			new SwitchState().execute(cmd, action);
 
 		finish();
 	}
